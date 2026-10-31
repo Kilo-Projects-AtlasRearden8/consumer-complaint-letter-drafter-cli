@@ -24,9 +24,13 @@ from consumer_complaint_drafter.letters import (
 class MockCompletionHandler(BaseHTTPRequestHandler):
     """HTTP handler that returns a fixed completion for any POST."""
 
+    # Class-level capture of the last request body for inspection.
+    last_request_body: bytes = b""
+
     def do_POST(self):  # noqa: N802 - http.server naming convention
         length = int(self.headers.get("Content-Length", 0))
-        self.rfile.read(length)  # consume request body
+        body = self.rfile.read(length)
+        MockCompletionHandler.last_request_body = body
         payload = {
             "model": "llama3.2",
             "choices": [
@@ -38,12 +42,12 @@ class MockCompletionHandler(BaseHTTPRequestHandler):
                 }
             ],
         }
-        body = json.dumps(payload).encode("utf-8")
+        resp = json.dumps(payload).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Length", str(len(resp)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.write(resp)
 
     def log_message(self, *args):  # noqa: D401 - silence test server logs
         pass
@@ -87,6 +91,31 @@ class MockEndpointTests(unittest.TestCase):
             CompletionRequest(model="", messages=[{"role": "user", "content": "hi"}])
         )
         self.assertEqual(response.content, "MOCKED LETTER DRAFT CONTENT")
+
+    def test_client_sends_correct_payload_to_endpoint(self):
+        client = CompletionClient(
+            base_url=f"http://127.0.0.1:{self.port}/v1",
+            model="sent-model",
+        )
+        client.complete(
+            CompletionRequest(
+                model="sent-model",
+                messages=[
+                    {"role": "system", "content": "sys"},
+                    {"role": "user", "content": "user"},
+                ],
+                temperature=0.5,
+                max_tokens=100,
+            )
+        )
+        sent = json.loads(MockCompletionHandler.last_request_body.decode("utf-8"))
+        self.assertEqual(sent["model"], "sent-model")
+        self.assertEqual(
+            sent["messages"], [{"role": "system", "content": "sys"},
+                               {"role": "user", "content": "user"}]
+        )
+        self.assertEqual(sent["temperature"], 0.5)
+        self.assertEqual(sent["max_tokens"], 100)
 
 
 class ClientErrorTests(unittest.TestCase):
