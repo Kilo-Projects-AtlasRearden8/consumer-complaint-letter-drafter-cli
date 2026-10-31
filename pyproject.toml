@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "consumer-complaint-letter-drafter"
+version = "0.1.0"
+description = "Local-first CLI that drafts consumer complaint, warranty, and small-claims demand letters via an OpenAI-compatible endpoint (default Ollama). Education-only; never sends automatically."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "Asdale Dynamics, LLC"}]
+keywords = ["consumer", "complaint", "warranty", "small-claims", "demand-letter", "ollama", "local-ai"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Topic :: Communications",
+    "Topic :: Legal",
+]
+
+[project.scripts]
+consumer-complaint-drafter = "consumer_complaint_drafter.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["consumer_complaint_drafter*"]
